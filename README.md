@@ -29,6 +29,7 @@ Please see the [Releases](https://github.com/lax1dude/eaglerxserver/releases) ta
 - **EaglerXBackendRPC** - Access the API of a BungeeCord/Velocity eagler server from Spigot
 - **EaglerMOTD** - A port of the EaglerMOTD plugin to the EaglercraftXServer API
 - **EaglerWeb** - Allows you to host files via HTTP from your server address
+- **EaglerXServer-Standalone** - Direct Eagler WebSocket proxy with TOML-configured backend servers
 - **EaglerXPlan** - Plan player analytics extension for Eaglercraft players
 - **EaglerXSupervisor** - Standalone "supervisor" daemon for multi-proxy setups
 
@@ -42,6 +43,33 @@ Please see the [Releases](https://github.com/lax1dude/eaglerxserver/releases) ta
 To get started, place the EaglerXServer JAR in the "plugins" folder of your Spigot, BungeeCord, or Velocity server. In most cases you will also need to use ViaVersion, ViaBackwards, and ViaRewind to make your Spigot servers compatible with 1.8. If you would like to support 1.5, add the EaglerXRewind JAR to the "plugins" folder as well. Add EaglerMOTD for animated MOTDs and EaglerWeb if you want to host a website from your server.
 
 To connect to your server, use the same IP address and port as you would on Java edition, EaglerXServer adds a translation layer that converts any Eaglercraft connections on your server to a regular Java edition connection.
+
+### Standalone Eagler Proxy
+
+The repository also includes a standalone Eagler WebSocket proxy build. It does not require Velocity or BungeeCord. Build it with Java 17 or 21:
+
+```sh
+cd eaglerxserver
+sh gradlew :core:core-platform-standalone:shadowJar
+```
+
+The JAR is written to `core/core-platform-standalone/build/libs/EaglerXServer-Standalone.jar`. Run it with a single TOML file:
+
+```sh
+java -jar EaglerXServer-Standalone.jar velocity.toml
+```
+
+The TOML file uses familiar backend entries:
+
+```toml
+bind = "0.0.0.0:8081"
+try = ["lobby"]
+
+[servers]
+lobby = "127.0.0.1:25565"
+```
+
+The menu script at `eaglerweb/setup.sh` creates an `eagler connection` folder, builds the standalone JAR automatically when run from the source tree, uses a JAR placed beside the script when available, or downloads the release asset when one has been published. It also creates an optional PM2 configuration for 24/7 operation.
 
 Please keep in mind that on BungeeCord and Velocity you must edit the EaglercraftXServer listeners config file to change the `inject_address` to match the address of one of the listeners configured on the underlying BungeeCord/Velocity server. This is different from how EaglercraftXBungee and EaglercraftXVelocity worked, where you could put any address and allow the plugin to open the port, this change was made to allow EaglercraftXServer to be better compatible with other plugins like ViaVersion and ProtocolLib.
 

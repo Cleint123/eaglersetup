@@ -1,6 +1,7 @@
 #!/bin/sh
-./gradlew core:shadowJar backend-rpc-core:shadowJar rewind_v1_5:shadowJar eaglermotd:shadowJar eaglerweb:shadowJar plan:shadowJar supervisor-core:shadowJar
+sh gradlew core:shadowJar core:core-platform-standalone:shadowJar backend-rpc-core:shadowJar rewind_v1_5:shadowJar eaglermotd:shadowJar eaglerweb:shadowJar plan:shadowJar supervisor-core:shadowJar
 cp "core/build/libs/EaglerXServer.jar" "EaglerXServer.jar"
+cp "core/core-platform-standalone/build/libs/EaglerXServer-Standalone.jar" "EaglerXServer-Standalone.jar"
 cp "backend-rpc-core/build/libs/EaglerXBackendRPC.jar" "EaglerXBackendRPC.jar"
 cp "rewind_v1_5/build/libs/EaglerXRewind.jar" "EaglerXRewind.jar"
 cp "eaglermotd/build/libs/EaglerMOTD.jar" "EaglerMOTD.jar"
