@@ -14,9 +14,11 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 final class StandaloneRawStatusHandler extends ByteToMessageDecoder {
 
 	private final String fallbackAddress;
+	private final String scheme;
 
-	StandaloneRawStatusHandler(String fallbackAddress) {
+	StandaloneRawStatusHandler(String fallbackAddress, boolean tlsEnabled) {
 		this.fallbackAddress = fallbackAddress;
+		this.scheme = tlsEnabled ? "wss://" : "ws://";
 	}
 
 	@Override
@@ -42,7 +44,7 @@ final class StandaloneRawStatusHandler extends ByteToMessageDecoder {
 			}
 		}
 		String page = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Eagler Connected!</title>"
-				+ "</head><body><h1>Eagler Connected!</h1><p>Join with " + escapeHtml(address)
+				+ "</head><body><h1>Eagler Connected!</h1><p>Join with " + scheme + escapeHtml(address)
 				+ "</p></body></html>";
 		byte[] body = page.getBytes(StandardCharsets.UTF_8);
 		String response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: "

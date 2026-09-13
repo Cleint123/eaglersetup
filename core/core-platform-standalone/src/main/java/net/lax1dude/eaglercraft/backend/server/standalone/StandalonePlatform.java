@@ -48,6 +48,7 @@ import net.lax1dude.eaglercraft.backend.server.adapter.PipelineAttributes;
 import net.lax1dude.eaglercraft.backend.server.adapter.JavaLogger;
 import net.lax1dude.eaglercraft.backend.server.adapter.event.IEventDispatchAdapter;
 import net.lax1dude.eaglercraft.backend.server.base.EaglerXServer;
+import net.lax1dude.eaglercraft.backend.server.base.EaglerListener;
 import net.lax1dude.eaglercraft.backend.server.config.EnumConfigFormat;
 
 final class StandalonePlatform implements IPlatform<StandalonePlayer> {
@@ -100,7 +101,9 @@ final class StandalonePlatform implements IPlatform<StandalonePlayer> {
 					public Consumer<SocketAddress> realAddressHandle() { return ignored -> { }; }
 					public Channel getChannel() { return channel; }
 				});
-				channel.pipeline().addFirst("standalone-raw-status", new StandaloneRawStatusHandler(config.getBind()));
+				boolean tlsEnabled = listener instanceof EaglerListener eaglerListener && eaglerListener.isTLSEnabled();
+				channel.pipeline().addFirst("standalone-raw-status",
+						new StandaloneRawStatusHandler(config.getBind(), tlsEnabled));
 				channel.pipeline().addLast("standalone-backend", new StandaloneBackendBridge(worker, config, playerInitializer, joinListener));
 			}
 		}).bind(parseAddress(config.getBind())).syncUninterruptibly().channel().closeFuture().syncUninterruptibly();
