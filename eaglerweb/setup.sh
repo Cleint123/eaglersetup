@@ -208,7 +208,7 @@ module.exports = {
     name: "eagler-connection",
     cwd: __dirname,
     script: "java",
-    args: "-Xms512M -Xmx2G -jar EaglerXServer.jar velocity.toml",
+	args: "-Xms512M -Xmx2G -jar EaglerXServer-Standalone.jar velocity.toml",
     interpreter: "none",
     autorestart: true,
     restart_delay: 3000,
@@ -240,21 +240,21 @@ setup_standalone() {
 		STANDALONE_JAR="$SERVER_DIR/core/core-platform-standalone/build/libs/EaglerXServer-Standalone.jar"
 	fi
 	if [ ! -f "$STANDALONE_JAR" ] && command -v curl >/dev/null 2>&1; then
-		STANDALONE_JAR="$PROXY_DIR/EaglerXServer.jar"
+		STANDALONE_JAR="$PROXY_DIR/EaglerXServer-Standalone.jar"
 		STANDALONE_JAR_URL=${STANDALONE_JAR_URL:-https://github.com/lax1dude/eaglerxserver/releases/latest/download/EaglerXServer-Standalone.jar}
 		printf '%s\n' "Downloading standalone JAR from $STANDALONE_JAR_URL..."
 		curl -fL --retry 2 "$STANDALONE_JAR_URL" -o "$STANDALONE_JAR" || rm -f "$STANDALONE_JAR"
 	fi
 	[ -f "$STANDALONE_JAR" ] || die "Standalone JAR not found: $STANDALONE_JAR"
-	if [ "$STANDALONE_JAR" != "$PROXY_DIR/EaglerXServer.jar" ]; then
-		cp "$STANDALONE_JAR" "$PROXY_DIR/EaglerXServer.jar"
+	if [ "$STANDALONE_JAR" != "$PROXY_DIR/EaglerXServer-Standalone.jar" ]; then
+		cp "$STANDALONE_JAR" "$PROXY_DIR/EaglerXServer-Standalone.jar"
 	fi
 	write_velocity_config
 	write_standalone_pm2_config
 	cat > "$PROXY_DIR/README.txt" <<EOF
 Standalone EaglerXServer
 
-Start directly with: java -jar EaglerXServer.jar velocity.toml
+Start directly with: java -jar EaglerXServer-Standalone.jar velocity.toml
 Start 24/7 with: pm2 start ecosystem.config.js && pm2 save
 
 The Eagler listener uses port $PORT.
