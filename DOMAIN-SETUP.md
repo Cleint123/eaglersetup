@@ -94,7 +94,7 @@ try = ["lobby"]
 The Eagler address is then:
 
 ```text
-wss://play.example.com:443
+wss://play.example.com
 ```
 
 When TLS is disabled, use:
