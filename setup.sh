@@ -91,7 +91,33 @@ ask_backend() {
 	[ "$BACKEND_PORT" -ge 1 ] && [ "$BACKEND_PORT" -le 65535 ] || die 'Backend port must be between 1 and 65535.'
 }
 
+download_regular_eaglerxserver_jar() {
+	local target_jav="$1"
+	local jar_url="${EAGLERXSERVER_JAR_URL:-https://github.com/lax1dude/eaglerxserver/releases/download/v1.1.1/EaglerXServer.jar}"
+	printf '%s\n' "Downloading EaglerXServer.jar from $jar_url..."
+	curl -fL --retry 3 "$jar_url" -o "$target_jav" || rm -f "$target_jav"
+}
+
+download_standalone_eaglerxserver_jar() {
+	local target_jav="$1"
+	local temp_jav="${target_jav%.jar}.2.jar"
+	local jar_url="${EAGLERXSERVER_STANDALONE_JAR_URL:-}"
+	if [ -z "$jar_url" ]; then
+		jar_url=$(curl -fsSL https://api.github.com/repos/Cleint123/eaglersetup/releases/latest | grep -Eo 'https://[^"]+\.jar' | head -n 1 || true)
+	fi
+	if [ -z "$jar_url" ]; then
+		jar_url='https://github.com/Cleint123/eaglersetup/releases/latest/download/EaglerXServer-Standalone.jar'
+	fi
+	printf '%s\n' "Downloading latest EaglerXServer-Standalone.jar from $jar_url..."
+	curl -fL --retry 3 "$jar_url" -o "$temp_jav" || rm -f "$temp_jav"
+	if [ -f "$temp_jav" ]; then
+		mv -f "$temp_jav" "$target_jav"
+	fi
+}
+
 install_jars() {
+	TARGET_JAR="${1:-$PROXY_DIR/plugins/EaglerXServer.jar}"
+	mkdir -p "$(dirname -- "$TARGET_JAR")"
 	mkdir -p "$PROXY_DIR/plugins"
 	if [ ! -f "$SCRIPT_DIR/build/libs/EaglerWeb.jar" ]; then
 		printf '%s\n' 'EaglerWeb.jar was not built. Building EaglerWeb and EaglerXServer...'
@@ -102,10 +128,28 @@ install_jars() {
 	else
 		printf '%s\n' 'Warning: EaglerWeb.jar was not found.'
 	fi
-	if [ -f "$SERVER_DIR/core/build/libs/EaglerXServer.jar" ]; then
-		cp "$SERVER_DIR/core/build/libs/EaglerXServer.jar" "$PROXY_DIR/plugins/EaglerXServer.jar"
-	else
-		printf '%s\n' 'Warning: EaglerXServer.jar was not found.'
+	if command -v curl >/dev/null 2>&1; then
+		download_regular_eaglerxserver_jar "$TARGET_JAR"
+		[ -f "$TARGET_JAR" ] || die 'Regular EaglerXServer.jar download failed.'
+		return
+	fi
+	REGULAR_JAR="$SERVER_DIR/core/build/libs/EaglerXServer.jar"
+	if [ ! -f "$REGULAR_JAR" ] && [ -f "$SCRIPT_DIR/EaglerXServer.jar" ]; then
+		REGULAR_JAR="$SCRIPT_DIR/EaglerXServer.jar"
+	fi
+	if [ ! -f "$REGULAR_JAR" ] && [ -f "$PWD/EaglerXServer.jar" ]; then
+		REGULAR_JAR="$PWD/EaglerXServer.jar"
+	fi
+	if [ ! -f "$REGULAR_JAR" ] && [ -f "$SERVER_DIR/gradlew" ]; then
+		printf '%s\n' 'EaglerXServer.jar was not built. Building it now...'
+		(cd "$SERVER_DIR" && sh gradlew :core:shadowJar) || die 'Regular EaglerXServer Gradle build failed.'
+	fi
+	if [ ! -f "$REGULAR_JAR" ] && [ -f "$SERVER_DIR/core/build/libs/EaglerXServer.jar" ]; then
+		REGULAR_JAR="$SERVER_DIR/core/build/libs/EaglerXServer.jar"
+	fi
+	[ -f "$REGULAR_JAR" ] || die 'Regular EaglerXServer.jar not found and could not be downloaded.'
+	if [ "$REGULAR_JAR" != "$TARGET_JAR" ]; then
+		cp "$REGULAR_JAR" "$TARGET_JAR"
 	fi
 }
 
@@ -278,11 +322,11 @@ setup_standalone() {
 	if [ ! -f "$STANDALONE_JAR" ]; then
 		STANDALONE_JAR="$SERVER_DIR/core/core-platform-standalone/build/libs/EaglerXServer-Standalone.jar"
 	fi
-	if [ ! -f "$STANDALONE_JAR" ] && command -v curl >/dev/null 2>&1; then
+	if command -v curl >/dev/null 2>&1; then
 		STANDALONE_JAR="$PROXY_DIR/EaglerXServer-Standalone.jar"
-		STANDALONE_JAR_URL=${STANDALONE_JAR_URL:-https://github.com/lax1dude/eaglerxserver/releases/latest/download/EaglerXServer-Standalone.jar}
-		printf '%s\n' "Downloading standalone JAR from $STANDALONE_JAR_URL..."
-		curl -fL --retry 2 "$STANDALONE_JAR_URL" -o "$STANDALONE_JAR" || rm -f "$STANDALONE_JAR"
+		download_standalone_eaglerxserver_jar "$STANDALONE_JAR"
+	elif [ ! -f "$STANDALONE_JAR" ]; then
+		STANDALONE_JAR="$SERVER_DIR/core/core-platform-standalone/build/libs/EaglerXServer-Standalone.jar"
 	fi
 	[ -f "$STANDALONE_JAR" ] || die "Standalone JAR not found: $STANDALONE_JAR"
 	if [ "$STANDALONE_JAR" != "$PROXY_DIR/EaglerXServer-Standalone.jar" ]; then
@@ -329,7 +373,7 @@ update_base_proxy() {
 setup_existing_proxy() {
 	ask_proxy_dir
 	ask_port
-	install_jars
+	install_jars "$PROXY_DIR/plugins/EaglerXServer.jar"
 	write_eaglerweb_config
 	write_listener_config
 	update_base_proxy
@@ -345,7 +389,7 @@ setup_localweb() {
 	PROXY_DIR=$(CDPATH= cd -- "$PROXY_DIR" && pwd)
 	ask_port
 	ask_backend
-	install_jars
+	install_jars "$PROXY_DIR/EaglerXServer.jar"
 	write_eaglerweb_config
 	write_listener_config
 	write_velocity_config
