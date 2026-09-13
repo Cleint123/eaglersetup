@@ -16,6 +16,44 @@ pause() {
 	read -r _
 }
 
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+		sudo "$@"
+	else
+		die 'Installing Node.js requires root access or passwordless sudo.'
+	fi
+}
+
+install_node_pm2() {
+	if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+		printf '%s\n' 'Node.js is not installed. Installing Node.js and npm...'
+		run_as_root apt-get update
+		run_as_root apt-get install -y nodejs npm
+	fi
+	if ! command -v pm2 >/dev/null 2>&1; then
+		printf '%s\n' 'PM2 is not installed. Installing PM2...'
+		run_as_root npm install --global pm2
+	fi
+}
+
+ask_start_server() {
+	printf '%s' 'Would you like to start the server now? [y/N]: '
+	read -r START_SERVER
+	case "$START_SERVER" in
+		y|Y|yes|YES)
+		if [ "${SERVER_MODE:-standalone}" = "localweb" ] && [ ! -f "$PROXY_DIR/velocity.jar" ]; then
+			printf '%s\n' 'Cannot start localweb yet: put velocity.jar in the server folder first.'
+			return
+		fi
+		(cd "$PROXY_DIR" && pm2 start ecosystem.config.js && pm2 save)
+		printf '%s\n' 'Server started with PM2 and saved for restart.'
+		;;
+		*) printf '%s\n' 'Server was not started.' ;;
+	esac
+}
+
 ask_proxy_dir() {
 	printf 'Proxy directory [%s]: ' "$PWD"
 	read -r PROXY_DIR
@@ -219,6 +257,7 @@ EOF
 }
 
 setup_standalone() {
+	SERVER_MODE=standalone
 	PROXY_DIR="$PWD/eagler connection"
 	mkdir -p "$PROXY_DIR" || die "Could not create standalone folder: $PROXY_DIR"
 	PROXY_DIR=$(CDPATH= cd -- "$PROXY_DIR" && pwd)
@@ -251,6 +290,7 @@ setup_standalone() {
 	fi
 	write_velocity_config
 	write_standalone_pm2_config
+	install_node_pm2
 	cat > "$PROXY_DIR/README.txt" <<EOF
 Standalone EaglerXServer
 
@@ -263,6 +303,7 @@ Edit velocity.toml to add more backend servers.
 EOF
 	printf '%s\n' '' "Standalone EaglerXServer created in $PROXY_DIR."
 	printf '%s\n' 'Edit velocity.toml to add backend servers, then run the README command.'
+	ask_start_server
 	pause
 }
 
@@ -291,6 +332,7 @@ setup_existing_proxy() {
 }
 
 setup_localweb() {
+	SERVER_MODE=localweb
 	PROXY_DIR="$PWD/eagler connection"
 	mkdir -p "$PROXY_DIR" || die "Could not create localweb folder: $PROXY_DIR"
 	PROXY_DIR=$(CDPATH= cd -- "$PROXY_DIR" && pwd)
@@ -304,9 +346,11 @@ setup_localweb() {
 	write_pm2_config
 	write_edit_script
 	write_local_readme
+	install_node_pm2
 	printf '%s\n' '' "Localweb proxy created in $PROXY_DIR."
 	printf '%s\n' 'Put a Velocity proxy jar at velocity.jar before starting it.'
 	printf '%s\n' 'Start it 24/7 with: pm2 start ecosystem.config.js && pm2 save'
+	ask_start_server
 	pause
 }
 
