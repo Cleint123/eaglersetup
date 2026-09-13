@@ -160,7 +160,7 @@ ws://YOUR_DOMAIN:8081
 With TLS enabled and certificates configured, use:
 
 ```text
-wss://YOUR_DOMAIN:443
+wss://YOUR_DOMAIN
 ```
 
 Opening the standalone listener in a browser shows `Eagler Connected!` and the address to join with.
