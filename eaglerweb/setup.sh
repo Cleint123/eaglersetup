@@ -289,6 +289,13 @@ setup_standalone() {
 		cp "$STANDALONE_JAR" "$PROXY_DIR/EaglerXServer-Standalone.jar"
 	fi
 	write_velocity_config
+	sed -i 's/^dual_stack = true$/dual_stack = false/' "$PROXY_DIR/velocity.toml"
+	cat >> "$PROXY_DIR/velocity.toml" <<EOF
+
+[listener]
+inject_address = "0.0.0.0:$PORT"
+dual_stack = false
+EOF
 	write_standalone_pm2_config
 	install_node_pm2
 	cat > "$PROXY_DIR/README.txt" <<EOF

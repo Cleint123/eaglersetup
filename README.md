@@ -73,6 +73,8 @@ lobby = "127.0.0.1:25565"
 
 The menu script at `eaglerweb/setup.sh` creates an `eagler connection` folder, builds the standalone JAR automatically when run from the source tree, uses a JAR placed beside the script when available, or downloads the release asset when one has been published. It also creates an optional PM2 configuration for 24/7 operation.
 
+When the standalone listener is running, opening its public address in a browser shows `Eagler Connected!` and the address to join with. WebSocket upgrade requests continue to the Eagler connection handler.
+
 Please keep in mind that on BungeeCord and Velocity you must edit the EaglercraftXServer listeners config file to change the `inject_address` to match the address of one of the listeners configured on the underlying BungeeCord/Velocity server. This is different from how EaglercraftXBungee and EaglercraftXVelocity worked, where you could put any address and allow the plugin to open the port, this change was made to allow EaglercraftXServer to be better compatible with other plugins like ViaVersion and ProtocolLib.
 
 **Velocity Note:** You may have issues if you attempt to use EaglercraftXServer with other plugins that also register plugin message event handlers, because Velocity's event bus will cause the plugin messages to be observed in an undefined order if an async handler is given higher priority than EaglercraftXServer.

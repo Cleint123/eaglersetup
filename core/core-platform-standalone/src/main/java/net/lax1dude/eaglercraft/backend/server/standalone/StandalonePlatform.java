@@ -81,6 +81,7 @@ final class StandalonePlatform implements IPlatform<StandalonePlayer> {
 			public void setEaglerListener(IEaglerXServerListener value) { listener = value; }
 			public SocketAddress getListenerAddress() { return parseAddress(config.getBind()); }
 		});
+		server.getWebServer().refreshBuiltinPages();
 		List<IPipelineComponent> components = new ArrayList<>();
 		components.add(new IPipelineComponent() {
 			private final ChannelHandler handler = new io.netty.channel.ChannelInboundHandlerAdapter();
@@ -99,6 +100,7 @@ final class StandalonePlatform implements IPlatform<StandalonePlayer> {
 					public Consumer<SocketAddress> realAddressHandle() { return ignored -> { }; }
 					public Channel getChannel() { return channel; }
 				});
+				channel.pipeline().addFirst("standalone-raw-status", new StandaloneRawStatusHandler(config.getBind()));
 				channel.pipeline().addLast("standalone-backend", new StandaloneBackendBridge(worker, config, playerInitializer, joinListener));
 			}
 		}).bind(parseAddress(config.getBind())).syncUninterruptibly().channel().closeFuture().syncUninterruptibly();
