@@ -1,4 +1,6 @@
-# EaglercraftXServer
+# eaglersetup
+
+## EaglercraftXServer
 
 ### An industrial-grade Eaglercraft server
 
