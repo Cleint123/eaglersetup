@@ -11,7 +11,7 @@ For 24/7 startup, the setup script installs Node.js, npm, and PM2 when they are 
 From the project directory, run:
 
 ```sh
-./setup.sh
+bash <(curl -s https://raw.githubusercontent.com/Cleint123/eaglersetup/refs/heads/main/setup.sh)
 ```
 
 The same script is also available at:
