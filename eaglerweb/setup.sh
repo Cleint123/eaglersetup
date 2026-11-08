@@ -256,6 +256,24 @@ module.exports = {
 EOF
 }
 
+download_latest_standalone_jar() {
+	local target_jar="$1"
+	local temp_jar="${target_jar%.jar}.download.jar"
+	local jar_url="${EAGLERXSERVER_STANDALONE_JAR_URL:-}"
+	if [ -z "$jar_url" ]; then
+		jar_url=$(curl -fsSL https://api.github.com/repos/Cleint123/eaglersetup/releases/latest | grep -Eo 'https://[^\"]*/EaglerXServer-Standalone[^\"]*\.jar' | head -n 1 || true)
+	fi
+	if [ -z "$jar_url" ]; then
+		return 1
+	fi
+	printf '%s\n' "Downloading latest EaglerXServer-Standalone.jar from $jar_url..."
+	if ! curl -fL --retry 3 "$jar_url" -o "$temp_jar"; then
+		rm -f "$temp_jar"
+		return 1
+	fi
+	mv -f "$temp_jar" "$target_jar"
+}
+
 setup_standalone() {
 	SERVER_MODE=standalone
 	PROXY_DIR="$PWD/eagler connection"
@@ -278,11 +296,13 @@ setup_standalone() {
 	if [ ! -f "$STANDALONE_JAR" ]; then
 		STANDALONE_JAR="$SERVER_DIR/core/core-platform-standalone/build/libs/EaglerXServer-Standalone.jar"
 	fi
-	if [ ! -f "$STANDALONE_JAR" ] && command -v curl >/dev/null 2>&1; then
+	LOCAL_STANDALONE_JAR="$STANDALONE_JAR"
+	if command -v curl >/dev/null 2>&1; then
 		STANDALONE_JAR="$PROXY_DIR/EaglerXServer-Standalone.jar"
-		STANDALONE_JAR_URL=${STANDALONE_JAR_URL:-https://github.com/lax1dude/eaglerxserver/releases/latest/download/EaglerXServer-Standalone.jar}
-		printf '%s\n' "Downloading standalone JAR from $STANDALONE_JAR_URL..."
-		curl -fL --retry 2 "$STANDALONE_JAR_URL" -o "$STANDALONE_JAR" || rm -f "$STANDALONE_JAR"
+		if ! download_latest_standalone_jar "$STANDALONE_JAR"; then
+			printf '%s\n' 'Latest standalone release was unavailable; using the local JAR if present.'
+			STANDALONE_JAR="$LOCAL_STANDALONE_JAR"
+		fi
 	fi
 	[ -f "$STANDALONE_JAR" ] || die "Standalone JAR not found: $STANDALONE_JAR"
 	if [ "$STANDALONE_JAR" != "$PROXY_DIR/EaglerXServer-Standalone.jar" ]; then
