@@ -1,5 +1,5 @@
 {
-  "_comment": "Generated for Pterodactyl Panel. The installer downloads the latest standalone release asset.",
+  "_comment": "Generated for Pterodactyl Panel. The installer pulls and runs the repository standalone setup script.",
   "meta": {
     "version": "PTDL_v2",
     "update_url": null
@@ -7,13 +7,13 @@
   "exported_at": "2026-11-08T00:00:00+00:00",
   "name": "EaglerXServer Standalone",
   "author": "EaglerXServer contributors",
-  "description": "Standalone Eaglercraft WebSocket proxy with a configurable Minecraft backend.",
+  "description": "Standalone Eaglercraft WebSocket proxy installed with the repository setup script.",
   "features": null,
   "docker_images": {
     "Java 17": "ghcr.io/pterodactyl/yolks:java_17"
   },
   "file_denylist": [],
-  "startup": "java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar EaglerXServer-Standalone.jar velocity.toml",
+  "startup": "cd 'eagler connection' && exec java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar EaglerXServer-Standalone.jar velocity.toml",
   "config": {
     "files": "{}",
     "startup": "{\n  \"done\": \"Server Name:\"\n}",
@@ -22,9 +22,9 @@
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/ash\nset -eu\napk add --no-cache curl jq\nmkdir -p /mnt/server\nrelease_json=$(curl -fsSL https://api.github.com/repos/Cleint123/eaglersetup/releases/latest)\nasset_url=$(printf '%s' \"$release_json\" | jq -r '.assets[]? | select(.name | test(\"^EaglerXServer-Standalone.*\\\\.jar$\")) | .browser_download_url' | head -n 1)\nif [ -z \"$asset_url\" ] || [ \"$asset_url\" = null ]; then\n  echo 'No standalone JAR asset was found in the latest GitHub release.' >&2\n  exit 1\nfi\ncurl -fL --retry 3 \"$asset_url\" -o /mnt/server/EaglerXServer-Standalone.jar\ncat > /mnt/server/velocity.toml <<EOF\nbind = \"0.0.0.0:${SERVER_PORT}\"\ntry = [\"${BACKEND_NAME}\"]\n\n[servers]\n${BACKEND_NAME} = \"${BACKEND_ADDRESS}\"\nEOF\n",
-      "container": "ghcr.io/pterodactyl/installers:alpine",
-      "entrypoint": "ash"
+      "script": "#!/bin/bash\nset -euo pipefail\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -y curl jq\nrelease_json=$(curl -fsSL https://api.github.com/repos/Cleint123/eaglersetup/releases/latest)\nasset_url=$(printf '%s' \"$release_json\" | jq -r '.assets[]? | select(.name | test(\"^EaglerXServer-Standalone.*[.]jar$\")) | .browser_download_url' | head -n 1)\nif [ -z \"$asset_url\" ] || [ \"$asset_url\" = null ]; then\n  echo 'No standalone JAR asset was found in the latest GitHub release.' >&2\n  exit 1\nfi\ncurl -fL --retry 3 https://raw.githubusercontent.com/Cleint123/eaglersetup/main/eaglerweb/setup.sh -o /tmp/eaglerxserver-setup.sh\ncd /mnt/server\nexport EAGLERXSERVER_STANDALONE_JAR_URL=\"$asset_url\"\nexport SERVER_PORT BACKEND_NAME BACKEND_HOST BACKEND_PORT\nprintf '3\\n%s\\n%s\\n%s\\n%s\\nn\\n\\n5\\n' \"$SERVER_PORT\" \"$BACKEND_NAME\" \"$BACKEND_HOST\" \"$BACKEND_PORT\" | sh /tmp/eaglerxserver-setup.sh\n",
+      "container": "ghcr.io/pterodactyl/installers:debian",
+      "entrypoint": "bash"
     }
   },
   "variables": [
@@ -39,13 +39,23 @@
       "field_type": "text"
     },
     {
-      "name": "Backend Address",
-      "description": "Backend host and port, for example 192.168.1.10:25565.",
-      "env_variable": "BACKEND_ADDRESS",
-      "default_value": "127.0.0.1:25565",
+      "name": "Backend Host",
+      "description": "Backend server hostname or IP address.",
+      "env_variable": "BACKEND_HOST",
+      "default_value": "127.0.0.1",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|string|regex:/^[A-Za-z0-9._:-]+$/",
+      "field_type": "text"
+    },
+    {
+      "name": "Backend Port",
+      "description": "Backend Minecraft server port.",
+      "env_variable": "BACKEND_PORT",
+      "default_value": "25565",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:1|max:65535",
       "field_type": "text"
     }
   ]
