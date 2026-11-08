@@ -13,7 +13,7 @@
     "Java 17": "ghcr.io/pterodactyl/yolks:java_17"
   },
   "file_denylist": [],
-  "startup": "curl -fL --retry 3 https://raw.githubusercontent.com/Cleint123/eaglersetup/main/eaglerweb/setup.sh -o setup.sh && bash setup.sh",
+  "startup": "curl -fL --retry 3 https://raw.githubusercontent.com/Cleint123/eaglersetup/main/setup.sh -o setup.sh && bash setup.sh",
   "config": {
     "files": "{}",
     "startup": "{\n  \"done\": \"Eagler connection setup\"\n}",
@@ -22,7 +22,7 @@
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/ash\nset -eu\napk add --no-cache curl\nmkdir -p /mnt/server\ncurl -fL --retry 3 https://raw.githubusercontent.com/Cleint123/eaglersetup/main/eaglerweb/setup.sh -o /mnt/server/setup.sh\nchmod +x /mnt/server/setup.sh\n",
+      "script": "#!/bin/ash\nset -eu\napk add --no-cache curl\nmkdir -p /mnt/server\ncurl -fL --retry 3 https://raw.githubusercontent.com/Cleint123/eaglersetup/main/setup.sh -o /mnt/server/setup.sh\nchmod +x /mnt/server/setup.sh\n",
       "container": "ghcr.io/pterodactyl/installers:alpine",
       "entrypoint": "ash"
     }
