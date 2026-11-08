@@ -317,8 +317,13 @@ setup_standalone() {
 		y|Y|yes|YES) RUNNING_IN_PANEL=1 ;;
 		*) RUNNING_IN_PANEL=0 ;;
 	esac
-	PROXY_DIR="$PWD/eagler connection"
-	mkdir -p "$PROXY_DIR" || die "Could not create standalone folder: $PROXY_DIR"
+	if [ "$RUNNING_IN_PANEL" -eq 1 ]; then
+		PROXY_DIR="$PWD"
+		[ -w "$PROXY_DIR" ] || die "Pterodactyl server directory is not writable: $PROXY_DIR"
+	else
+		PROXY_DIR="$PWD/eagler connection"
+		mkdir -p "$PROXY_DIR" || die "Could not create standalone folder: $PROXY_DIR"
+	fi
 	PROXY_DIR=$(CDPATH= cd -- "$PROXY_DIR" && pwd)
 	ask_port
 	ask_backend
