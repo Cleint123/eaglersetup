@@ -3,8 +3,15 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-SERVER_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-DEFAULT_SETTINGS="$SCRIPT_DIR/src/main/resources/net/lax1dude/eaglercraft/backend/eaglerweb/base/default_settings.json"
+if [ -f "$SCRIPT_DIR/gradlew" ]; then
+	SERVER_DIR="$SCRIPT_DIR"
+elif [ -f "$PWD/gradlew" ]; then
+	SERVER_DIR="$PWD"
+else
+	SERVER_DIR="$SCRIPT_DIR"
+fi
+EAGLERWEB_DIR="$SERVER_DIR/eaglerweb"
+DEFAULT_SETTINGS="$EAGLERWEB_DIR/src/main/resources/net/lax1dude/eaglercraft/backend/eaglerweb/base/default_settings.json"
 
 die() {
 	printf '%s\n' "Error: $*" >&2
@@ -110,7 +117,10 @@ download_standalone_eaglerxserver_jar() {
 		return 1
 	fi
 	printf '%s\n' "Downloading latest EaglerXServer-Standalone.jar from $jar_url..."
-	curl -fL --retry 3 "$jar_url" -o "$temp_jav" || { rm -f "$temp_jav"; return 1; }
+	if ! curl -fL --retry 3 "$jar_url" -o "$temp_jav"; then
+		rm -f "$temp_jav"
+		return 1
+	fi
 	mv -f "$temp_jav" "$target_jav"
 }
 
@@ -118,12 +128,12 @@ install_jars() {
 	TARGET_JAR="${1:-$PROXY_DIR/plugins/EaglerXServer.jar}"
 	mkdir -p "$(dirname -- "$TARGET_JAR")"
 	mkdir -p "$PROXY_DIR/plugins"
-	if [ ! -f "$SCRIPT_DIR/build/libs/EaglerWeb.jar" ]; then
+	if [ ! -f "$EAGLERWEB_DIR/build/libs/EaglerWeb.jar" ]; then
 		printf '%s\n' 'EaglerWeb.jar was not built. Building EaglerWeb and EaglerXServer...'
 		(cd "$SERVER_DIR" && sh gradlew :eaglerweb:shadowJar :core:shadowJar) || die 'Gradle build failed.'
 	fi
-	if [ -f "$SCRIPT_DIR/build/libs/EaglerWeb.jar" ]; then
-		cp "$SCRIPT_DIR/build/libs/EaglerWeb.jar" "$PROXY_DIR/plugins/EaglerWeb.jar"
+	if [ -f "$EAGLERWEB_DIR/build/libs/EaglerWeb.jar" ]; then
+		cp "$EAGLERWEB_DIR/build/libs/EaglerWeb.jar" "$PROXY_DIR/plugins/EaglerWeb.jar"
 	else
 		printf '%s\n' 'Warning: EaglerWeb.jar was not found.'
 	fi
@@ -301,8 +311,19 @@ EOF
 
 setup_standalone() {
 	SERVER_MODE=standalone
-	PROXY_DIR="$PWD/eagler connection"
-	mkdir -p "$PROXY_DIR" || die "Could not create standalone folder: $PROXY_DIR"
+	printf '%s' 'Are you running this setup in a Pterodactyl panel? [y/N]: '
+	read -r RUNNING_IN_PANEL
+	case "$RUNNING_IN_PANEL" in
+		y|Y|yes|YES) RUNNING_IN_PANEL=1 ;;
+		*) RUNNING_IN_PANEL=0 ;;
+	esac
+	if [ "$RUNNING_IN_PANEL" -eq 1 ]; then
+		PROXY_DIR="$PWD"
+		[ -w "$PROXY_DIR" ] || die "Pterodactyl server directory is not writable: $PROXY_DIR"
+	else
+		PROXY_DIR="$PWD/eagler connection"
+		mkdir -p "$PROXY_DIR" || die "Could not create standalone folder: $PROXY_DIR"
+	fi
 	PROXY_DIR=$(CDPATH= cd -- "$PROXY_DIR" && pwd)
 	ask_port
 	ask_backend
@@ -340,7 +361,9 @@ inject_address = "0.0.0.0:$PORT"
 dual_stack = false
 EOF
 	write_standalone_pm2_config
-	install_node_pm2
+	if [ "$RUNNING_IN_PANEL" -eq 0 ]; then
+		install_node_pm2
+	fi
 	cat > "$PROXY_DIR/README.txt" <<EOF
 Standalone EaglerXServer
 
@@ -353,6 +376,10 @@ Edit velocity.toml to add more backend servers.
 EOF
 	printf '%s\n' '' "Standalone EaglerXServer created in $PROXY_DIR."
 	printf '%s\n' 'Edit velocity.toml to add backend servers, then run the README command.'
+	if [ "$RUNNING_IN_PANEL" -eq 1 ]; then
+		cd "$PROXY_DIR"
+		exec java -jar EaglerXServer-Standalone.jar velocity.toml
+	fi
 	ask_start_server
 	pause
 }
