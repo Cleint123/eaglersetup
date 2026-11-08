@@ -71,7 +71,7 @@ try = ["lobby"]
 lobby = "127.0.0.1:25565"
 ```
 
-The menu script at `eaglerweb/setup.sh` creates an `eagler connection` folder, builds the standalone JAR automatically when run from the source tree, uses a JAR placed beside the script when available, or downloads the release asset when one has been published. It also creates an optional PM2 configuration for 24/7 operation.
+The root `setup.sh` menu creates an `eagler connection` folder, builds the standalone JAR automatically when run from the source tree, uses a JAR placed beside the script when available, or downloads the latest release asset. It also creates an optional PM2 configuration for 24/7 operation.
 
 When the standalone listener is running, opening its public address in a browser shows `Eagler Connected!` and the address to join with. WebSocket upgrade requests continue to the Eagler connection handler.
 
