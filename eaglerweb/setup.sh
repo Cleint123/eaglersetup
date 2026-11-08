@@ -258,6 +258,12 @@ EOF
 
 setup_standalone() {
 	SERVER_MODE=standalone
+	printf '%s' 'Are you running this setup in a Pterodactyl panel? [y/N]: '
+	read -r RUNNING_IN_PANEL
+	case "$RUNNING_IN_PANEL" in
+		y|Y|yes|YES) RUNNING_IN_PANEL=1 ;;
+		*) RUNNING_IN_PANEL=0 ;;
+	esac
 	PROXY_DIR="$PWD/eagler connection"
 	mkdir -p "$PROXY_DIR" || die "Could not create standalone folder: $PROXY_DIR"
 	PROXY_DIR=$(CDPATH= cd -- "$PROXY_DIR" && pwd)
@@ -280,9 +286,13 @@ setup_standalone() {
 	fi
 	if [ ! -f "$STANDALONE_JAR" ] && command -v curl >/dev/null 2>&1; then
 		STANDALONE_JAR="$PROXY_DIR/EaglerXServer-Standalone.jar"
-		STANDALONE_JAR_URL=${STANDALONE_JAR_URL:-https://github.com/lax1dude/eaglerxserver/releases/latest/download/EaglerXServer-Standalone.jar}
+		STANDALONE_JAR_URL=${EAGLERXSERVER_STANDALONE_JAR_URL:-}
+		if [ -z "$STANDALONE_JAR_URL" ]; then
+			STANDALONE_JAR_URL=$(curl -fsSL https://api.github.com/repos/Cleint123/eaglersetup/releases/latest | grep -Eo 'https://[^\"]*/EaglerXServer-Standalone[^\"]*\.jar' | head -n 1 || true)
+		fi
+		[ -n "$STANDALONE_JAR_URL" ] || die 'No standalone JAR was found in the latest GitHub release.'
 		printf '%s\n' "Downloading standalone JAR from $STANDALONE_JAR_URL..."
-		curl -fL --retry 2 "$STANDALONE_JAR_URL" -o "$STANDALONE_JAR" || rm -f "$STANDALONE_JAR"
+		curl -fL --retry 2 "$STANDALONE_JAR_URL" -o "$STANDALONE_JAR" || die 'Standalone JAR download failed.'
 	fi
 	[ -f "$STANDALONE_JAR" ] || die "Standalone JAR not found: $STANDALONE_JAR"
 	if [ "$STANDALONE_JAR" != "$PROXY_DIR/EaglerXServer-Standalone.jar" ]; then
@@ -297,7 +307,9 @@ inject_address = "0.0.0.0:$PORT"
 dual_stack = false
 EOF
 	write_standalone_pm2_config
-	install_node_pm2
+	if [ "$RUNNING_IN_PANEL" -eq 0 ]; then
+		install_node_pm2
+	fi
 	cat > "$PROXY_DIR/README.txt" <<EOF
 Standalone EaglerXServer
 
@@ -310,6 +322,10 @@ Edit velocity.toml to add more backend servers.
 EOF
 	printf '%s\n' '' "Standalone EaglerXServer created in $PROXY_DIR."
 	printf '%s\n' 'Edit velocity.toml to add backend servers, then run the README command.'
+	if [ "$RUNNING_IN_PANEL" -eq 1 ]; then
+		cd "$PROXY_DIR"
+		exec java -jar EaglerXServer-Standalone.jar velocity.toml
+	fi
 	ask_start_server
 	pause
 }
