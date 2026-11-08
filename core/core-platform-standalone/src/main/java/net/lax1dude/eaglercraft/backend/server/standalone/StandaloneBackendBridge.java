@@ -63,7 +63,7 @@ final class StandaloneBackendBridge extends ChannelInboundHandlerAdapter {
 				channel.pipeline().addLast("frame-encoder", new VarIntFrameEncoder());
 				channel.pipeline().addLast("backend-to-eagler", new ChannelInboundHandlerAdapter() {
 					public void channelRead(ChannelHandlerContext backendCtx, Object message) {
-						ctx.fireChannelRead(((ByteBuf) message).retain());
+						ctx.writeAndFlush(((ByteBuf) message).retain());
 						((ByteBuf) message).release();
 					}
 					public void channelInactive(ChannelHandlerContext backendCtx) { ctx.close(); }
