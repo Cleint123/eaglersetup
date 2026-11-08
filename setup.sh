@@ -103,16 +103,15 @@ download_standalone_eaglerxserver_jar() {
 	local temp_jav="${target_jav%.jar}.2.jar"
 	local jar_url="${EAGLERXSERVER_STANDALONE_JAR_URL:-}"
 	if [ -z "$jar_url" ]; then
-		jar_url=$(curl -fsSL https://api.github.com/repos/Cleint123/eaglersetup/releases/latest | grep -Eo 'https://[^"]+\.jar' | head -n 1 || true)
+		jar_url=$(curl -fsSL https://api.github.com/repos/Cleint123/eaglersetup/releases/latest | grep -Eo 'https://[^\"]*/EaglerXServer-Standalone[^\"]*\.jar' | head -n 1 || true)
 	fi
 	if [ -z "$jar_url" ]; then
-		jar_url='https://github.com/Cleint123/eaglersetup/releases/latest/download/EaglerXServer-Standalone.jar'
+		printf '%s\n' 'No EaglerXServer-Standalone JAR was found in the latest GitHub release.' >&2
+		return 1
 	fi
 	printf '%s\n' "Downloading latest EaglerXServer-Standalone.jar from $jar_url..."
-	curl -fL --retry 3 "$jar_url" -o "$temp_jav" || rm -f "$temp_jav"
-	if [ -f "$temp_jav" ]; then
-		mv -f "$temp_jav" "$target_jav"
-	fi
+	curl -fL --retry 3 "$jar_url" -o "$temp_jav" || { rm -f "$temp_jav"; return 1; }
+	mv -f "$temp_jav" "$target_jav"
 }
 
 install_jars() {
@@ -324,7 +323,7 @@ setup_standalone() {
 	fi
 	if command -v curl >/dev/null 2>&1; then
 		STANDALONE_JAR="$PROXY_DIR/EaglerXServer-Standalone.jar"
-		download_standalone_eaglerxserver_jar "$STANDALONE_JAR"
+		download_standalone_eaglerxserver_jar "$STANDALONE_JAR" || die 'Standalone release download failed.'
 	elif [ ! -f "$STANDALONE_JAR" ]; then
 		STANDALONE_JAR="$SERVER_DIR/core/core-platform-standalone/build/libs/EaglerXServer-Standalone.jar"
 	fi
