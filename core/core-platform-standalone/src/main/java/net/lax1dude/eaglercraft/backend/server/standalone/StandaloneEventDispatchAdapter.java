@@ -54,7 +54,29 @@ final class StandaloneEventDispatchAdapter implements IEventDispatchAdapter<Stan
 	public void dispatchAuthCookieEvent(IEaglerLoginConnection p, byte[] a, boolean n, boolean c, byte[] d, String r, String u, UUID i, byte t, String m, String s, IEventDispatchCallback<IEaglercraftAuthCookieEvent<StandalonePlayer, String>> cb) { complete(cb, IEaglercraftAuthCookieEvent.class); }
 	public void dispatchAuthPasswordEvent(IEaglerLoginConnection p, byte[] a, boolean n, byte[] s, byte[] d, boolean c, byte[] k, String r, String u, UUID i, byte t, String m, String q, IEventDispatchCallback<IEaglercraftAuthPasswordEvent<StandalonePlayer, String>> cb) { complete(cb, IEaglercraftAuthPasswordEvent.class); }
 	public void dispatchClientBrandEvent(IEaglerPendingConnection p, IEventDispatchCallback<IEaglercraftClientBrandEvent<StandalonePlayer, String>> cb) { complete(cb, IEaglercraftClientBrandEvent.class); }
-	public void dispatchLoginEvent(IEaglerLoginConnection p, boolean r, String s, IEventDispatchCallback<IEaglercraftLoginEvent<StandalonePlayer, String>> cb) { complete(cb, IEaglercraftLoginEvent.class); }
+	@SuppressWarnings("unchecked")
+	public void dispatchLoginEvent(IEaglerLoginConnection p, boolean r, String s, IEventDispatchCallback<IEaglercraftLoginEvent<StandalonePlayer, String>> cb) {
+		if (cb != null) {
+			Object event = Proxy.newProxyInstance(IEaglercraftLoginEvent.class.getClassLoader(),
+					new Class<?>[] { IEaglercraftLoginEvent.class }, (proxy, method, args) -> {
+						switch (method.getName()) {
+						case "getLoginConnection": return p;
+						case "getServerAPI": return api;
+						case "getProfileUsername": return p.getUsername();
+						case "getProfileUUID": return p.getUniqueId();
+						case "getRequestedServer": return s;
+						case "isLoginStateRedirectSupported": return r;
+						default:
+							if (method.getName().equals("isCancelled")) return false;
+							if (method.getReturnType() == String.class) return null;
+							if (method.getReturnType() == UUID.class) return null;
+							if (method.getReturnType() == boolean.class) return false;
+							return null;
+						}
+					});
+			cb.complete((IEaglercraftLoginEvent<StandalonePlayer, String>) event, null);
+		}
+	}
 	public void dispatchInitializePlayerEvent(IEaglerPlayer<StandalonePlayer> p, Map<String, byte[]> d, IEventDispatchCallback<IEaglercraftInitializePlayerEvent<StandalonePlayer>> cb) { complete(cb, IEaglercraftInitializePlayerEvent.class); }
 	public void dispatchDestroyPlayerEvent(IEaglerPlayer<StandalonePlayer> p, IEventDispatchCallback<IEaglercraftDestroyPlayerEvent<StandalonePlayer>> cb) { complete(cb, IEaglercraftDestroyPlayerEvent.class); }
 	public void dispatchMOTDEvent(IMOTDConnection c, IEventDispatchCallback<IEaglercraftMOTDEvent<StandalonePlayer>> cb) { complete(cb, IEaglercraftMOTDEvent.class); }
