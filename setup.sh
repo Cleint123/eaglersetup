@@ -416,8 +416,20 @@ edit_server() {
 	fi
 }
 
+view_console() {
+	if ! command -v pm2 >/dev/null 2>&1; then
+		printf '%s\n' 'PM2 is not installed. Use the Pterodactyl panel Console or the terminal running the server.'
+		return
+	fi
+	printf 'Standalone server directory [%s/eagler connection]: ' "$PWD"
+	read -r PROXY_DIR
+	PROXY_DIR=${PROXY_DIR:-$PWD/eagler connection}
+	[ -d "$PROXY_DIR" ] || die "Server directory not found: $PROXY_DIR"
+	pm2 logs eagler-connection --lines 100
+}
+
 while :; do
-	printf '%s\n' '' 'Eagler connection setup' '1) Connect EaglerWeb to an existing proxy' '2) Create a localweb proxy with Velocity' '3) Create a standalone EaglerXServer' '4) Edit server' '5) Exit'
+	printf '%s\n' '' 'Eagler connection setup' '1) Connect EaglerWeb to an existing proxy' '2) Create a localweb proxy with Velocity' '3) Create a standalone EaglerXServer' '4) Edit server' '5) View console' '6) Exit'
 	printf '%s' 'Choose an option: '
 	read -r OPTION
 	case "$OPTION" in
@@ -425,7 +437,8 @@ while :; do
 		2) setup_localweb ;;
 		3) setup_standalone ;;
 		4) edit_server ;;
-		5) exit 0 ;;
-		*) printf '%s\n' 'Please choose 1, 2, 3, 4, or 5.' ;;
+		5) view_console ;;
+		6) exit 0 ;;
+		*) printf '%s\n' 'Please choose 1, 2, 3, 4, 5, or 6.' ;;
 	esac
 done
