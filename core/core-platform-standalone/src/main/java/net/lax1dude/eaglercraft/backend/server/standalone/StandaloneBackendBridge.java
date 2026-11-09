@@ -1,6 +1,8 @@
 package net.lax1dude.eaglercraft.backend.server.standalone;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Map;
 
 import io.netty.bootstrap.Bootstrap;
@@ -26,8 +28,10 @@ final class StandaloneBackendBridge extends ChannelInboundHandlerAdapter {
 	private final StandaloneConfig config;
 	private final IEaglerXServerPlayerInitializer<IPipelineData, Object, StandalonePlayer> playerInitializer;
 	private final IEaglerXServerJoinListener<StandalonePlayer> joinListener;
+	private final Deque<ByteBuf> pendingPackets = new ArrayDeque<>();
 	private Channel backend;
 	private IPlatformServer<StandalonePlayer> selectedServer;
+	private boolean connecting;
 
 	StandaloneBackendBridge(EventLoopGroup worker, StandaloneConfig config,
 			IEaglerXServerPlayerInitializer<IPipelineData, Object, StandalonePlayer> playerInitializer,
@@ -42,17 +46,23 @@ final class StandaloneBackendBridge extends ChannelInboundHandlerAdapter {
 			return;
 		}
 		if (backend == null) {
+			pendingPackets.addLast(buffer.retain());
+			buffer.release();
+			if (connecting) {
+				return;
+			}
+			connecting = true;
 			NettyPipelineData data = ctx.channel().attr(PipelineAttributes.<IPipelineData>pipelineData()).get() instanceof NettyPipelineData p ? p : null;
 			String name = data != null && config.getServers().containsKey(data.requestedServer) ? data.requestedServer : config.getDefaultServer();
 			selectedServer = new ServerLookup(config.getServers()).get(name);
-			connect(ctx, selectedServer, buffer);
+			connect(ctx, selectedServer);
 			return;
 		}
 		backend.writeAndFlush(buffer.retain());
 		buffer.release();
 	}
 
-	private void connect(ChannelHandlerContext ctx, IPlatformServer<StandalonePlayer> server, ByteBuf first) {
+	private void connect(ChannelHandlerContext ctx, IPlatformServer<StandalonePlayer> server) {
 		String address = ((StandaloneServer) server).getAddress();
 		int split = address.lastIndexOf(':');
 		Bootstrap bootstrap = new Bootstrap().group(worker).channel(io.netty.channel.socket.nio.NioSocketChannel.class)
@@ -70,13 +80,39 @@ final class StandaloneBackendBridge extends ChannelInboundHandlerAdapter {
 				});
 			}
 		});
-		bootstrap.connect().addListener(future -> {
-			if (!future.isSuccess()) { first.release(); ctx.close(); return; }
-			backend = ((io.netty.channel.ChannelFuture) future).channel();
-			backend.writeAndFlush(first.retain());
-			first.release();
+		bootstrap.connect().addListener(future -> ctx.executor().execute(() -> {
+			if (!future.isSuccess()) {
+				releasePendingPackets();
+				ctx.close();
+				return;
+			}
+			Channel connectedBackend = ((io.netty.channel.ChannelFuture) future).channel();
+			if (!ctx.channel().isActive()) {
+				releasePendingPackets();
+				connectedBackend.close();
+				return;
+			}
+			backend = connectedBackend;
+			while (!pendingPackets.isEmpty()) {
+				backend.writeAndFlush(pendingPackets.removeFirst());
+			}
 			initializePlayer(ctx);
-		});
+		}));
+	}
+
+	private void releasePendingPackets() {
+		while (!pendingPackets.isEmpty()) {
+			pendingPackets.removeFirst().release();
+		}
+	}
+
+	@Override
+	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+		releasePendingPackets();
+		if (backend != null) {
+			backend.close();
+		}
+		super.channelInactive(ctx);
 	}
 
 	private void initializePlayer(ChannelHandlerContext ctx) {
