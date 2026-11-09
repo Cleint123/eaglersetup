@@ -22,7 +22,7 @@
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/ash\nset -eu\nmkdir -p /mnt/server\nprintf '%s\\n' 'The latest setup.sh will be fetched to /tmp at startup.'\n",
+      "script": "#!/bin/ash\nset -eu\nmkdir -p /mnt/server\nchmod -R a+rwX /mnt/server\nprintf '%s\\n' 'The server directory is writable; setup.sh will be fetched to /tmp at startup.'\n",
       "container": "ghcr.io/pterodactyl/installers:alpine",
       "entrypoint": "ash"
     }
