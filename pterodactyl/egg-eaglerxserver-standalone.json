@@ -1,0 +1,31 @@
+{
+  "_comment": "Generated for Pterodactyl Panel. The installer downloads the interactive setup script.",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-11-08T00:00:00+00:00",
+  "name": "EaglerXServer Standalone",
+  "author": "EaglerXServer contributors",
+  "description": "Interactive EaglerXServer setup menu.",
+  "features": null,
+  "docker_images": {
+    "Java 17": "ghcr.io/pterodactyl/yolks:java_17"
+  },
+  "file_denylist": [],
+  "startup": "curl -fL --retry 3 https://raw.githubusercontent.com/Cleint123/eaglersetup/main/setup.sh -o /tmp/eaglerxserver-setup.sh && bash /tmp/eaglerxserver-setup.sh",
+  "config": {
+    "files": "{}",
+    "startup": "{\n  \"done\": \"Eagler connection setup\"\n}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/ash\nset -eu\nmkdir -p /mnt/server\nprintf '%s\\n' 'The latest setup.sh will be fetched to /tmp at startup.'\n",
+      "container": "ghcr.io/pterodactyl/installers:alpine",
+      "entrypoint": "ash"
+    }
+  },
+  "variables": []
+}
