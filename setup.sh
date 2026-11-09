@@ -236,6 +236,16 @@ dual_stack = true
 EOF
 }
 
+write_standalone_config() {
+	cat > "$PROXY_DIR/velocity.toml" <<EOF
+bind = "0.0.0.0:$PORT"
+try = ["$BACKEND_NAME"]
+
+[servers]
+$BACKEND_NAME = "$BACKEND_HOST:$BACKEND_PORT"
+EOF
+}
+
 write_eagler_metadata() {
 	cat > "$PROXY_DIR/eagler.toml" <<EOF
 # Eagler connection settings. Edit this file with the Edit server menu.
@@ -352,14 +362,7 @@ setup_standalone() {
 	if [ "$STANDALONE_JAR" != "$PROXY_DIR/EaglerXServer-Standalone.jar" ]; then
 		cp "$STANDALONE_JAR" "$PROXY_DIR/EaglerXServer-Standalone.jar"
 	fi
-	write_velocity_config
-	sed -i 's/^dual_stack = true$/dual_stack = false/' "$PROXY_DIR/velocity.toml"
-	cat >> "$PROXY_DIR/velocity.toml" <<EOF
-
-[listener]
-inject_address = "0.0.0.0:$PORT"
-dual_stack = false
-EOF
+	write_standalone_config
 	write_standalone_pm2_config
 	if [ "$RUNNING_IN_PANEL" -eq 0 ]; then
 		install_node_pm2
